@@ -19,19 +19,34 @@
 //
 
 #define MAX_REPARSE_SIZE 17000
-#define REPARSE_MOUNTPOINT_HEADER_SIZE   8
+#define REPARSE_DATA_BUFFER_HEADER_SIZE   8
 
-typedef struct {
+typedef struct _REPARSE_DATA_BUFFER {
     DWORD          ReparseTag;
     WORD           ReparseDataLength;
     WORD           Reserved;
 
-    WORD           TargetNameOffset;
-    WORD           TargetNameLength;
-    WORD           PrintNameOffset;
-    WORD           PrintNameLength;
-    WCHAR          PathBuffer[1];           // ?
-} REPARSE_MOUNTPOINT_DATA_BUFFER, *PREPARSE_MOUNTPOINT_DATA_BUFFER;
+	union {
+        struct {
+            WORD   TargetNameOffset;
+            WORD   TargetNameLength;
+            WORD   PrintNameOffset;
+            WORD   PrintNameLength;
+            DWORD  Flags;
+            WCHAR  PathBuffer[1];
+        } SymbolicLinkReparseBuffer;
+        struct {
+            WORD   TargetNameOffset;
+            WORD   TargetNameLength;
+            WORD   PrintNameOffset;
+            WORD   PrintNameLength;
+            WCHAR  PathBuffer[1];
+        } MountPointReparseBuffer;
+        struct {
+            UCHAR  DataBuffer[1];
+        } GenericReparseBuffer;
+    } DUMMYUNIONNAME;
+} REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
 
 #undef FSCTL_SET_REPARSE_POINT
 #undef FSCTL_GET_REPARSE_POINT
@@ -43,13 +58,15 @@ typedef struct {
 #define FSCTL_DELETE_REPARSE_POINT \
 	CTL_CODE(FILE_DEVICE_FILE_SYSTEM, 43, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
-#define IORPS_TAG_SYMBOLIC_LINK             (0x80000000)
+#define IORPS_TAG_SYMBOLIC_LINK             (0xA000000C)
 #define IORPS_TAG_MOUNT_POINT               (0xA0000003)
 #define IORPS_TAG_HSM                       (0xC0000004)
 #define IORPS_TAG_NSS                       (0x80000005)
 #define IORPS_TAG_NSSRECOVER                (0x80000006)
 #define IORPS_TAG_SIS                       (0x80000007)
 #define IORPS_TAG_DFS                       (0x80000008)
+
+#define SYMLINK_FLAG_RELATIVE               (0x01)
 
 void GetNormalizedPath(wchar_t * buffer, const wchar_t *src)
 {
@@ -80,8 +97,8 @@ static BOOL CreateJunction(const wchar_t *linkname, const wchar_t *targetFileNam
 	WCHAR  targetNativeFileName[MAX_PATH];
 	HANDLE hFile;
 	DWORD  returnedLength;
-	PREPARSE_MOUNTPOINT_DATA_BUFFER reparseInfo
-		= (PREPARSE_MOUNTPOINT_DATA_BUFFER) reparseBuffer;
+	PREPARSE_DATA_BUFFER reparseInfo
+		= (PREPARSE_DATA_BUFFER) reparseBuffer;
 	BOOL fDirectory
 		= GetFileAttributes(targetFileName) & FILE_ATTRIBUTE_DIRECTORY;
 
@@ -154,29 +171,29 @@ static BOOL CreateJunction(const wchar_t *linkname, const wchar_t *targetFileNam
 	else
 		reparseInfo->ReparseTag = IORPS_TAG_SYMBOLIC_LINK; // Never used
 
-	reparseInfo->TargetNameOffset = 0;
-	reparseInfo->TargetNameLength
+	reparseInfo->MountPointReparseBuffer.TargetNameOffset = 0;
+	reparseInfo->MountPointReparseBuffer.TargetNameLength
 		= (WORD)(lstrlenW(targetNativeFileName) * sizeof(wchar_t));
 
-	reparseInfo->PrintNameOffset
-		= reparseInfo->TargetNameLength + sizeof(wchar_t);
-	reparseInfo->PrintNameLength = 0;
-	memset((char *)reparseInfo + reparseInfo->PrintNameOffset, 0, 4);
+	reparseInfo->MountPointReparseBuffer.PrintNameOffset
+		= reparseInfo->MountPointReparseBuffer.TargetNameLength + sizeof(wchar_t);
+	reparseInfo->MountPointReparseBuffer.PrintNameLength = 0;
+	memset((char *)reparseInfo + reparseInfo->MountPointReparseBuffer.PrintNameOffset, 0, 4);
 
-	lstrcpyW(reparseInfo->PathBuffer, targetNativeFileName);
+	lstrcpyW(reparseInfo->MountPointReparseBuffer.PathBuffer, targetNativeFileName);
 
 	// ReparseDataLength is the length of data storage
 	reparseInfo->ReparseDataLength
-		= REPARSE_MOUNTPOINT_HEADER_SIZE
-		+ reparseInfo->PrintNameOffset
-		+ reparseInfo->PrintNameLength + 2;
+		= REPARSE_DATA_BUFFER_HEADER_SIZE
+		+ reparseInfo->MountPointReparseBuffer.PrintNameOffset
+		+ reparseInfo->MountPointReparseBuffer.PrintNameLength + 2;
 
 	//
 	// Set the link
 	//
 	if(!DeviceIoControl(hFile, FSCTL_SET_REPARSE_POINT,
 				reparseInfo,
-				reparseInfo->ReparseDataLength + REPARSE_MOUNTPOINT_HEADER_SIZE,
+				reparseInfo->ReparseDataLength + REPARSE_DATA_BUFFER_HEADER_SIZE,
 				NULL, 0, &returnedLength, NULL))
 	{
 		CloseHandle(hFile);
@@ -365,8 +382,8 @@ BOOL GetLinkTargetPath(wchar_t *buffer, const wchar_t *filename)
 	// リパースバッファの確保
 	DWORD dwSize;
 	BYTE  reparseBuffer[MAX_REPARSE_SIZE];
-	PREPARSE_MOUNTPOINT_DATA_BUFFER data
-		= (PREPARSE_MOUNTPOINT_DATA_BUFFER)reparseBuffer;
+	PREPARSE_DATA_BUFFER data
+		= (PREPARSE_DATA_BUFFER)reparseBuffer;
 	HANDLE hFile;
 
 	// デフォルトでは、何も返さない
@@ -408,19 +425,81 @@ BOOL GetLinkTargetPath(wchar_t *buffer, const wchar_t *filename)
 	{
 		switch(data->ReparseTag)
 		{
+		// シンボリックリンク
 		case IORPS_TAG_SYMBOLIC_LINK:
-		case IORPS_TAG_MOUNT_POINT:
 			{
-				// シンボリックリンク
 				wchar_t *p
-					= (wchar_t *)((BYTE *)&data->PathBuffer
-					 + data->TargetNameOffset);
-				int len = data->TargetNameLength;
+					= (wchar_t *)((BYTE *)&data->SymbolicLinkReparseBuffer.PathBuffer
+						+ data->SymbolicLinkReparseBuffer.TargetNameOffset);
+				int len = data->SymbolicLinkReparseBuffer.TargetNameLength;
+
 
 				// "\??\" で始まっていたら削除
 				if(wcsncmp(p, L"\\??\\", 4) == 0)
-					p += 4, len -= 4;
-				p[len] = 0;
+					p += 4, len -= 4 * sizeof(wchar_t);
+				p[len / sizeof(wchar_t)] = 0;
+
+				// 相対パスの場合
+				if (data->SymbolicLinkReparseBuffer.Flags & SYMLINK_FLAG_RELATIVE)
+				{
+#if 0
+					wchar_t targetPath[MAX_PATH];
+
+					// リパースポイントのターゲットを開く
+					HANDLE hFileTarget = CreateFileW(
+						filename,
+						0,
+						0,
+						NULL,
+						OPEN_EXISTING,
+						FILE_FLAG_BACKUP_SEMANTICS,
+						NULL);
+					if(hFileTarget == INVALID_HANDLE_VALUE)
+						return FALSE;
+
+					// Win32 API を使用してリンク先の最終的なパスを解決する
+					GetFinalPathNameByHandleW(hFile, targetPath, MAX_PATH, FILE_NAME_OPENED);
+					CloseHandle(hFileTarget);
+
+					// "\\?\" で始まっていたらスキップ
+					if(wcsncmp(targetPath, L"\\\\?\\", 4) == 0)
+					{
+						lstrcpyW(buffer, targetPath + 4);
+					}
+					else
+					{
+						lstrcpyW(buffer, targetPath);
+					}
+#else
+					wchar_t parentPath[MAX_PATH];
+
+					// シンボリックリンクが存在するディレクトリを取得
+					lstrcpynW(parentPath, filename, MAX_PATH);
+					PathRemoveFileSpec(parentPath);
+					// シンボリックリンクの相対パスと結合して絶対パスに変換
+					PathCombineW(buffer, parentPath, p);
+#endif
+				}
+				// 絶対パスの場合
+				else
+				{
+					lstrcpyW(buffer, p);
+				}
+				PathRemoveBackslashW(buffer);
+			}
+			return TRUE;
+		// ジャンクション
+		case IORPS_TAG_MOUNT_POINT:
+			{
+				wchar_t *p
+					= (wchar_t *)((BYTE *)&data->MountPointReparseBuffer.PathBuffer
+						+ data->MountPointReparseBuffer.TargetNameOffset);
+				int len = data->MountPointReparseBuffer.TargetNameLength;
+
+				// "\??\" で始まっていたら削除
+				if(wcsncmp(p, L"\\??\\", 4) == 0)
+					p += 4, len -= 4 * sizeof(wchar_t);
+				p[len / sizeof(wchar_t)] = 0;
 
 				lstrcpyW(buffer, p);
 				PathRemoveBackslashW(buffer);
@@ -442,8 +521,8 @@ FOLDER_TYPE GetSymlinkType(const wchar_t *filename)
 {
 	DWORD dwSize;
 	BYTE  reparseBuffer[MAX_REPARSE_SIZE];
-	PREPARSE_MOUNTPOINT_DATA_BUFFER data
-		= (PREPARSE_MOUNTPOINT_DATA_BUFFER)reparseBuffer;
+	PREPARSE_DATA_BUFFER data
+		= (PREPARSE_DATA_BUFFER)reparseBuffer;
 	HANDLE hFile;
 
 	if(!(GetFileAttributesW(filename) & FILE_ATTRIBUTE_REPARSE_POINT))

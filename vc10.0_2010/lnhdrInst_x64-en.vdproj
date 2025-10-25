@@ -255,7 +255,7 @@
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:TRUE"
-        "ProductVersion" = "8:2.07.115"
+        "ProductVersion" = "8:2.07.15501"
         "Manufacturer" = "8:T.Kawasaki"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:http://eside.homeip.net"

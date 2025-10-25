@@ -333,7 +333,26 @@ bool CSymlinkCtxMenu::openLinkTarget(LPCMINVOKECOMMANDINFO pici, CEnumFiles& fil
 	TCHAR filename[MAX_PATH], targetPath[MAX_PATH];
 	files.getNthFileName(0, filename);
 	if(GetLinkTargetPath(targetPath, filename))
-		ShellExecute(pici->hwnd, NULL, targetPath, NULL, NULL, SW_SHOW);
+	{
+		if(!PathFileExists(targetPath))
+		{
+			MessageBox(NULL,
+				rsprintf(IDS_LINK_TARGET_NOT_EXISTS, targetPath),
+				rsprintf(IDS_STRING103),
+				MB_OK | MB_ICONERROR);
+
+			return false;
+		}
+
+		if(MessageBox(NULL,
+				rsprintf(IDS_OPEN_LINK_TARGET_PATH, targetPath),
+				rsprintf(IDS_OPENLINKTARGET_HELP),
+				MB_OKCANCEL | MB_ICONINFORMATION
+				) == IDOK)
+		{
+			ShellExecute(pici->hwnd, NULL, targetPath, NULL, NULL, SW_SHOW);
+		}
+	}
 	return true;
 }
 

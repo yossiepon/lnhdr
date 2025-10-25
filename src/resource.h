@@ -72,6 +72,8 @@
 #define IDD_SPLASH                      204
 #define IDB_SPLASH                      205
 #define IDC_SYMLINK_TYPE                215
+#define IDS_LINK_TARGET_NOT_EXISTS      300
+#define IDS_OPEN_LINK_TARGET_PATH       301
 
 // Next default values for new objects
 // 
