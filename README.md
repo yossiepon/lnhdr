@@ -1,7 +1,8 @@
-# リンク作成シェル拡張 Ver.1.55 for Windows
-- 最終更新 2016年 7月16日
+# リンク作成シェル拡張 Ver.1.55.0.1 for Windows
+- 最終更新 2025年 10月25日
 - 1999-2006 Programmed and Copyright by T.Kawasaki, all rights reserved.
 - 2015-2016 Changed by kobake.
+- 2025 Changed by yossiepon.
 
 ## 1. 概要
 - Windows 7で次の機能を実現します。
@@ -37,8 +38,7 @@
 「リンク作成シェル拡張」と改名しました。
 
 ## 2. 動作確認済OS
-- Windows 7 Home Premium 64bit
-- Windows 10 Pro (10.0.10586)
+- Windows 11 Pro 25H2 (10.0.26200.6901)
 
 ※ Windows XP 以前の環境については Ver 1.52 をお使いください。
 
@@ -46,6 +46,11 @@
 コントロールパネルの「アプリケーションの追加と削除」から、「リンク作成シェル拡張 」を探しだし、アンインストールします。
 
 ## 4. 履歴
+- Ver.1.55.0.1 2025/10/25
+    - 「リンク先を開く」でディレクトリへのシンボリックリンクを開く処理が未実装だった問題を修正。
+    - 「リンク先を開く」際にリンク先パスを表示するようにし、存在しない場合は開く前にエラーとするように修正。
+    - リンク先パス取得時のバッファ操作ミス（ヌル終端文字の書き込み位置がバッファ範囲外等）を修正。
+
 - Ver.1.55 2016/07/16
     - シンボリックリンク作成時にファイル名にUNICODE文字が含まれているとうまく動かない問題を修正。
 
@@ -146,13 +151,17 @@ Mark Russinovich氏のjunction.cに基づくソースコードを利用してい
 T.Kawaski氏のブログ。
 - [espresso3389の日記](http://espresso3389.hatenablog.com/)
 - [リンク作成シェル拡張の開発をずっと止めている件について - espresso3389の日記](http://espresso3389.hatenablog.com/entry/20070809/1186667454)
+- [「リンク作成シェル拡張」を他の方にメンテしていただけることになりました - espresso3389の日記](https://espresso3389.hatenablog.com/entry/2015/12/13/182942)
 
 SourceForgeリポジトリ。
 - [Link Creation Shell Extension download | SourceForge.net](http://sourceforge.net/projects/lnhdr/)
 
-deraw 氏によるパッケージ配布場所。
-- [リンク作成シェル拡張の再配布 - 萌えの値段](http://d.hatena.ne.jp/deraw/20070603/1180817684)
-- [リンク作成シェル拡張 for Windows 2000/2003/XP 再配布ページ](http://www4.point.ne.jp/~numa/lnhdr/)
+deraw 氏によるパッケージ配布場所。（Internet Archive）
+- [リンク作成シェル拡張の再配布 - 萌えの値段](https://web.archive.org/web/20160714205854/http://d.hatena.ne.jp/deraw/20070603/1180817684)
+- [リンク作成シェル拡張 for Windows 2000/2003/XP 再配布ページ](https://web.archive.org/web/20210821145509/http://www4.point.ne.jp/~numa/lnhdr/)
+
+kobake 氏のブログ。（Internet Archive）
+- [「リンク作成シェル拡張」を GitHub でメンテナンスしていきます - clock-up-blog](https://web.archive.org/web/20210307002102/http://blog.clock-up.jp/entry/2015/12/13/lnhdr)
 
 ## 8. その他
 このソフトウェアに対する権利その他は、[LICENSE.md](https://github.com/kobake/lnhdr/blob/master/LICENSE.md) を参照してください。

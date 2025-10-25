@@ -40,8 +40,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,2016,7,16
- PRODUCTVERSION 1,55,0,0
+ FILEVERSION 1,2025,10,25
+ PRODUCTVERSION 1,55,0,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -58,12 +58,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "T.Kawasaki"
             VALUE "FileDescription", "Link Creation Shell Extension"
-            VALUE "FileVersion", "1.2016.7.16"
+            VALUE "FileVersion", "1.2025.10.25"
             VALUE "InternalName", "lnhdr.dll"
             VALUE "LegalCopyright", "(C) 2002-2005 T.Kawasaki.  All rights reserved."
             VALUE "OriginalFilename", "lnhdr.dll"
             VALUE "ProductName", "Link Creation Shell Extension"
-            VALUE "ProductVersion", "1.55.0.0"
+            VALUE "ProductVersion", "1.55.0.1"
         END
     END
     BLOCK "VarFileInfo"
@@ -208,6 +208,12 @@ BEGIN
     IDS_COPYMD5             "MD5値をコピー(&M)"
     IDS_COPYMD5_HELP        "選択されたファイルのMD5ハッシュ値をクリップボードにコピーします。"
     IDS_COPYMD5_VERB        "copyMD5"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LINK_TARGET_NOT_EXISTS "リンク先 '%1' が存在しません。"
+    IDS_OPEN_LINK_TARGET_PATH "次のパス '%1'"
 END
 
 #endif    // 日本語 (日本) resources
@@ -367,6 +373,12 @@ BEGIN
     IDS_COPYMD5             "Copy &MD5 Hash"
     IDS_COPYMD5_HELP        "Copy the MD5 Hash of the selected files to the clipboard."
     IDS_COPYMD5_VERB        "copyMD5"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_LINK_TARGET_NOT_EXISTS "Link target '%1' not exists."
+    IDS_OPEN_LINK_TARGET_PATH "Path '%1'"
 END
 
 #endif    // 英語 (米国) resources
